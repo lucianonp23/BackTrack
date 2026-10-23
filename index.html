@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Backtrack — Dual N-Back</title>
+  <meta name="description" content="Daily dual n-back working-memory training. Works offline.">
+  <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16181d" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Backtrack">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script>
+    // Apply a forced light/dark theme before first paint (see src/services/theme.ts).
+    try {
+      var t = JSON.parse(localStorage.getItem('backtrack.v2')).settings.theme;
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    } catch (e) { /* no saved data yet */ }
+  </script>
+</head>
+<body>
+  <main id="app">
+
+    <!-- HOME -->
+    <section class="view" id="view-home" data-active>
+      <header class="topbar">
+        <h1 class="brand">Backtrack</h1>
+        <div class="topbar-actions">
+          <button class="icon-btn" data-nav="stats" aria-label="Statistics">
+            <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          </button>
+          <button class="icon-btn" data-nav="settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="hero">
+        <p class="eyebrow">N-back level</p>
+        <p class="hero-level" id="home-level">1</p>
+        <p class="hero-sub" id="home-sub">Compare each step with the one 1 back</p>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-head">
+          <span>Today's session</span>
+          <span id="home-rounds">0 / 12 rounds</span>
+        </div>
+        <div class="round-dots" id="home-dots"></div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><span class="tile-value" id="home-streak">0</span><span class="tile-label">day streak</span></div>
+        <div class="tile"><span class="tile-value" id="home-challenge">0/20</span><span class="tile-label">challenge days</span></div>
+        <div class="tile"><span class="tile-value" id="home-best">1</span><span class="tile-label">highest level</span></div>
+      </div>
+
+      <div class="cta-wrap">
+        <button class="btn btn-primary btn-lg" id="btn-play">Start round</button>
+        <button class="btn btn-ghost" data-nav="howto">How to play</button>
+      </div>
+    </section>
+
+    <!-- PLAY -->
+    <section class="view view-play" id="view-play">
+      <header class="play-top">
+        <button class="icon-btn" id="btn-abort" aria-label="Stop round">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <div class="play-meta">
+          <span class="play-level" id="play-level">1-back</span>
+          <span class="play-count" id="play-count">0 / 21</span>
+        </div>
+        <span class="icon-btn-spacer"></span>
+      </header>
+      <div class="play-progress"><div class="play-progress-bar" id="play-bar"></div></div>
+
+      <div class="board-wrap">
+        <div class="board" id="board" aria-label="Position grid">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell cell-center"><span class="cross">+</span></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+        <p class="play-hint" id="play-hint"></p>
+      </div>
+
+      <div class="answer-row" id="answer-row">
+        <button class="answer" id="btn-position" data-key="A">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+          <span>Position</span><kbd>A</kbd>
+        </button>
+        <button class="answer" id="btn-sound" data-key="L">
+          <svg viewBox="0 0 24 24" class="icon-sound"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+          <svg viewBox="0 0 24 24" class="icon-letter" hidden><path d="M5 20 12 4l7 16M8 14h8"/></svg>
+          <span>Sound</span><kbd>L</kbd>
+        </button>
+      </div>
+    </section>
+
+    <!-- ROUND RESULT -->
+    <section class="view" id="view-result">
+      <div class="result-wrap">
+        <p class="eyebrow" id="result-round">Round 1 of 12</p>
+        <h2 class="result-title" id="result-title">Nice work!</h2>
+        <div class="scores">
+          <div class="score">
+            <svg class="ring" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg ring-visual" id="ring-visual" cx="60" cy="60" r="52"/></svg>
+            <div class="score-text"><span class="score-value" id="score-visual">0%</span><span class="score-label">Position</span></div>
+          </div>
+          <div class="score">
+            <svg class="ring" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg ring-audio" id="ring-audio" cx="60" cy="60" r="52"/></svg>
+            <div class="score-text"><span class="score-value" id="score-audio">0%</span><span class="score-label" id="score-audio-label">Sound</span></div>
+          </div>
+        </div>
+        <p class="result-detail" id="result-detail"></p>
+        <div class="level-change" id="result-level"></div>
+
+        <div class="level-picker" id="level-picker" hidden>
+          <span>Level for next round</span>
+          <div class="stepper">
+            <button class="icon-btn" id="lvl-dec" aria-label="Lower level">−</button>
+            <span id="lvl-value">1</span>
+            <button class="icon-btn" id="lvl-inc" aria-label="Raise level">+</button>
+          </div>
+        </div>
+
+        <p class="rules-note">Both ≥ 90% raises the level · either &lt; 75% lowers it</p>
+        <div class="cta-wrap">
+          <button class="btn btn-primary btn-lg" id="btn-next">Next round</button>
+          <button class="btn btn-ghost" id="btn-home">Done for now</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SESSION COMPLETE -->
+    <section class="view" id="view-session">
+      <div class="result-wrap">
+        <p class="eyebrow">Session complete</p>
+        <h2 class="result-title">All 12 rounds done</h2>
+        <div class="tiles">
+          <div class="tile"><span class="tile-value" id="ses-avg">0</span><span class="tile-label">avg level</span></div>
+          <div class="tile"><span class="tile-value" id="ses-max">0</span><span class="tile-label">highest</span></div>
+          <div class="tile"><span class="tile-value" id="ses-streak">0</span><span class="tile-label">day streak</span></div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><span class="tile-value" id="ses-visual">0%</span><span class="tile-label">avg position</span></div>
+          <div class="tile"><span class="tile-value" id="ses-audio">0%</span><span class="tile-label">avg sound</span></div>
+          <div class="tile"><span class="tile-value" id="ses-challenge">0/20</span><span class="tile-label">challenge</span></div>
+        </div>
+        <p class="result-detail" id="ses-message"></p>
+        <div class="cta-wrap">
+          <button class="btn btn-primary btn-lg" data-nav="home">Back home</button>
+          <button class="btn btn-ghost" id="btn-extra">Play extra rounds</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="view" id="view-stats">
+      <header class="topbar">
+        <button class="icon-btn" data-nav="home" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6"/></svg></button>
+        <h2 class="topbar-title">Progress</h2>
+        <span class="icon-btn-spacer"></span>
+      </header>
+      <div class="scroll">
+        <div class="tiles tiles-4">
+          <div class="tile"><span class="tile-value" id="st-level">1</span><span class="tile-label">current level</span></div>
+          <div class="tile"><span class="tile-value" id="st-max">1</span><span class="tile-label">highest level</span></div>
+          <div class="tile"><span class="tile-value" id="st-streak">0</span><span class="tile-label">current streak</span></div>
+          <div class="tile"><span class="tile-value" id="st-longest">0</span><span class="tile-label">longest streak</span></div>
+          <div class="tile"><span class="tile-value" id="st-sessions">0</span><span class="tile-label">sessions</span></div>
+          <div class="tile"><span class="tile-value" id="st-rounds">0</span><span class="tile-label">rounds</span></div>
+          <div class="tile"><span class="tile-value" id="st-avg">0</span><span class="tile-label">all-time avg</span></div>
+          <div class="tile"><span class="tile-value" id="st-challenge">0/20</span><span class="tile-label">challenge</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Average level per day</h3>
+            <span class="muted">last 30 days</span>
+          </div>
+          <div id="chart-level" class="chart"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Accuracy per day</h3>
+            <span class="legend"><i class="sw sw-visual"></i>Position <i class="sw sw-audio"></i>Sound</span>
+          </div>
+          <div id="chart-accuracy" class="chart"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Calendar</h3><span class="muted" id="cal-month"></span></div>
+          <div class="calendar" id="calendar"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Recent rounds</h3></div>
+          <table class="rounds-table">
+            <thead><tr><th>When</th><th>Level</th><th>Position</th><th>Sound</th><th></th></tr></thead>
+            <tbody id="rounds-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <header class="topbar">
+        <button class="icon-btn" data-nav="home" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6"/></svg></button>
+        <h2 class="topbar-title">Settings</h2>
+        <span class="icon-btn-spacer"></span>
+      </header>
+      <div class="scroll">
+        <div class="card settings">
+          <h3>Appearance</h3>
+          <div class="row"><span><b>Theme</b><small>Follow the device, or always light or dark</small></span>
+            <div class="segmented" role="group" aria-label="Theme" id="theme-picker">
+              <button type="button" data-theme-option="system">System</button>
+              <button type="button" data-theme-option="light">Light</button>
+              <button type="button" data-theme-option="dark">Dark</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card settings">
+          <h3>Game</h3>
+          <label class="row"><span><b>Show grid</b><small>Draw the 3×3 grid lines</small></span><input type="checkbox" class="switch" data-setting="showGrid"></label>
+          <label class="row"><span><b>Swap buttons</b><small>Sound left, Position right</small></span><input type="checkbox" class="switch" data-setting="swapButtons"></label>
+          <label class="row"><span><b>Button deselection</b><small>Tap a button a second time to deselect it</small></span><input type="checkbox" class="switch" data-setting="deselection"></label>
+          <label class="row"><span><b>Vibration</b><small>Haptic tick on tap (Android)</small></span><input type="checkbox" class="switch" data-setting="haptics"></label>
+        </div>
+
+        <div class="card settings">
+          <h3>Letters</h3>
+          <div class="row row-col"><span><b>Letter mode</b><small id="letter-mode-hint">Letters are read aloud</small></span>
+            <div class="segmented segmented-full" role="group" aria-label="Letter mode" id="letter-mode-picker">
+              <button type="button" data-letter-mode-option="speak">Voice</button>
+              <button type="button" data-letter-mode-option="both">Voice + text</button>
+              <button type="button" data-letter-mode-option="show">Text only</button>
+            </div>
+          </div>
+          <div id="voice-settings">
+            <label class="row"><span><b>Voice language</b><small>Language the letters are read in</small></span>
+              <select id="lang-select" class="select">
+                <option value="en">English</option>
+                <option value="pt">Português (Brasil)</option>
+              </select>
+            </label>
+            <label class="row"><span><b>Voice</b><small>Letters are read aloud by your device</small></span>
+              <select id="voice-select" class="select"></select>
+            </label>
+            <p class="muted small" id="voice-missing" hidden>No voice for this language is installed on this device. On iPhone: Settings → Accessibility → Spoken Content → Voices. On Android: Settings → Text-to-speech.</p>
+            <button class="btn btn-ghost btn-sm" id="btn-test-voice">Test voice</button>
+          </div>
+        </div>
+
+        <div class="card settings">
+          <h3>Advanced</h3>
+          <p class="muted small">The default settings match those used in the scientific studies (3 s per step, automatic levelling, no instant feedback). Changing them may reduce the benefit.</p>
+          <label class="row"><span><b>Scientific mode</b><small>Lock settings to the study protocol</small></span><input type="checkbox" class="switch" data-setting="scientific"></label>
+          <div class="advanced" id="advanced">
+            <label class="row"><span><b>Instant feedback</b><small>Buttons flash green or red when tapped</small></span><input type="checkbox" class="switch" data-setting="instantFeedback"></label>
+            <label class="row"><span><b>Level controls</b><small>Set your own n-back level after each round</small></span><input type="checkbox" class="switch" data-setting="levelControls"></label>
+            <label class="row row-col"><span><b>Speed</b><small id="speed-label">1.0× · 3.0 s per step</small></span>
+              <input type="range" id="speed" min="1" max="4" step="0.25" value="1">
+            </label>
+          </div>
+        </div>
+
+        <div class="card settings">
+          <h3>Data</h3>
+          <button class="btn btn-ghost btn-sm" data-nav="howto">Replay tutorial</button>
+          <button class="btn btn-ghost btn-sm" id="btn-export">Export data</button>
+          <label class="btn btn-ghost btn-sm file-btn">Import data<input type="file" id="import-file" accept="application/json" hidden></label>
+          <button class="btn btn-ghost btn-sm" id="btn-new-challenge">Start a new 20-day challenge</button>
+          <button class="btn btn-danger btn-sm" id="btn-reset">Erase all data</button>
+        </div>
+        <p class="muted small center">All data stays on this device.</p>
+      </div>
+    </section>
+
+    <!-- HOW TO -->
+    <section class="view" id="view-howto">
+      <header class="topbar">
+        <button class="icon-btn" data-nav="home" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6"/></svg></button>
+        <h2 class="topbar-title">How to play</h2>
+        <span class="icon-btn-spacer"></span>
+      </header>
+      <div class="scroll">
+        <div class="card howto">
+          <ol class="steps">
+            <li><b>Each step</b>, a square lights up on the grid and a voice says a letter.</li>
+            <li><b>At level 1</b>, compare each step with the step right before it: step 2 against step 1, step 3 against step 2, and so on.</li>
+            <li>If the <b>square is in the same place</b>, tap <b>Position</b>. If the <b>letter is the same</b>, tap <b>Sound</b>. Both can match at once, so tap both.</li>
+            <li><b>At level 2</b>, compare against two steps back: step 3 against step 1, step 4 against step 2. Level <i>n</i> means <i>n</i> steps back.</li>
+            <li>A round has 20 + n steps, 3 seconds each. After the round, if <b>both scores are 90% or more</b> your level goes up. If <b>either is below 75%</b> it goes down. Otherwise it stays.</li>
+            <li>Play <b>12 rounds a day</b> (≈20 minutes). Aim for 20 days. Your day resets at 4 AM.</li>
+          </ol>
+          <p class="muted small">Score per channel = hits ÷ (hits + misses + false alarms). Keyboard: <kbd>A</kbd> position, <kbd>L</kbd> sound.</p>
+          <div class="cta-wrap">
+            <button class="btn btn-primary btn-lg" id="btn-practice">Practice round (1-back, with feedback)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <dialog class="dialog" id="dialog">
+      <p id="dialog-text"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="dialog-cancel">Cancel</button>
+        <button class="btn btn-primary" id="dialog-ok">OK</button>
+      </div>
+    </dialog>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
